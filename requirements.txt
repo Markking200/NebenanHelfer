@@ -1,0 +1,11 @@
+fastapi
+uvicorn[standard]
+sqlalchemy
+databases[aiosqlite] # or databases[asyncpg] for PostgreSQL
+python-dotenv
+pydantic-settings
+pydantic[email]
+rich
+httpx # for making HTTP requests
+twilio
+flask
