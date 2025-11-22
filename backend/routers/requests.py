@@ -59,13 +59,16 @@ async def create_request(request: HelpRequestCreate):
 # Using Enum for request status filtering
 # Get list of requests, with optional filtering by status
 @router.get("/requests", response_model=list[HelpRequestResponse])
-async def get_requests(status: requests.RequestStatus = requests.RequestStatus.OPEN):
+async def get_requests(status: requests.RequestStatus | None = None):
     """Retrieve all requests, optionally filtered by status"""
 
     query = requests_table.select()
 
     if status:
         query = query.where(requests_table.c.status == status.value)
+
+    else:
+        query = query.select()
 
     logger.debug(f"Executing query to get requests: {query}")
     results = await database.fetch_all(query)
@@ -81,7 +84,19 @@ async def update_request(request_id: int, request: HelpRequestUpdate):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Request not found"
         )
+
+    # Get student user_id
+    user = await get_user(request.user_id)
+    if user.user_type != UserType.STUDENT:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only student users can accept requests",
+        )
     update_data = request.model_dump(exclude_unset=True)
+
+    # Transform user_id into student_id in the requests table
+    update_data["student_id"] = update_data.pop("user_id")
+
     query = (
         requests_table.update()
         .where(requests_table.c.id == request_id)

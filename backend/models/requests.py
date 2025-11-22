@@ -36,8 +36,8 @@ class HelpRequestCreate(HelpRequestBase):
 
 # Update Schema
 class HelpRequestUpdate(BaseModel):
+    user_id: int
     status: Optional[RequestStatus] = None
-    student_id: Optional[int] = None
     model_config = ConfigDict(from_attributes=True)  # For ORM compatibility
 
 
@@ -46,6 +46,6 @@ class HelpRequestResponse(HelpRequestBase):
     id: int
     user_id: int
     created_at: datetime
-    status: RequestStatus
+    status: Optional[RequestStatus] = None
     student_id: Optional[int] = None
     model_config = ConfigDict(from_attributes=True)  # For ORM compatibility
