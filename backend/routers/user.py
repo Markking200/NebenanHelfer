@@ -38,3 +38,21 @@ async def get_user(user_id: int):
             status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
         )
     return UserResponse.model_validate(user_record)
+
+
+# User Login implementation
+# json body should contain email and password
+@router.post("/login", response_model=UserResponse)
+async def login(json_body: dict):
+    """Authenticate user and return user information"""
+    query = user_table.select().where(
+        (user_table.c.email == json_body.get("email"))
+        & (user_table.c.password == json_body.get("password"))
+    )
+    logger.debug(f"Executing query to login user: {query}")
+    user_record = await database.fetch_one(query)
+    if not user_record:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials"
+        )
+    return UserResponse.model_validate(user_record)

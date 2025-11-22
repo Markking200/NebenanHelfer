@@ -1,18 +1,17 @@
-from fastapi import FastAPI, Request
-import requests
-from google import genai
-from google.genai import types
 import json
 import os
-from dotenv import load_dotenv
-from gtts import gTTS
-import subprocess
-import pathlib
 import random
+import subprocess
+
+import requests
+from dotenv import load_dotenv
+from fastapi import FastAPI, Request
+from google import genai
+from google.genai import types
 from google.maps.addressvalidation_v1 import AddressValidationClient
 from google.maps.addressvalidation_v1.types import ValidateAddressRequest
 from google.type.postal_address_pb2 import PostalAddress
-
+from gtts import gTTS
 
 app = FastAPI()
 load_dotenv()
@@ -20,31 +19,35 @@ TOKEN = os.getenv("TELEGRAM")
 GOOGLE_ADDRESS_VALIDATION_API_KEY = os.getenv("GOVAL")
 
 addr_client = AddressValidationClient(
-    client_options={"api_key": GOOGLE_ADDRESS_VALIDATION_API_KEY}  # API key auth pattern for Google clients
+    client_options={
+        "api_key": GOOGLE_ADDRESS_VALIDATION_API_KEY
+    }  # API key auth pattern for Google clients
 )
 
 if not TOKEN:
     raise RuntimeError("Missing env vars! Check your .env file.")
 
 
-
-client = genai.Client(api_key=os.environ["GEMINI_API_KEY"],vertexai=False,)
+client = genai.Client(
+    api_key=os.getenv("GEMINI_API_KEY"),
+    vertexai=False,
+)
 
 print("Starting Telegram webhook server...")
+
 
 def tts_to_mp3(text, mp3_path="reply.mp3"):
     gTTS(text=text, lang="de").save(mp3_path)
     return mp3_path
 
+
 def mp3_to_ogg_opus(mp3_path="reply.mp3", ogg_path="reply.ogg"):
-    subprocess.run([
-        "ffmpeg", "-y",
-        "-i", mp3_path,
-        "-c:a", "libopus",
-        "-b:a", "32k",
-        ogg_path
-    ], check=True)
+    subprocess.run(
+        ["ffmpeg", "-y", "-i", mp3_path, "-c:a", "libopus", "-b:a", "32k", ogg_path],
+        check=True,
+    )
     return ogg_path
+
 
 def send_voice(chat_id: int, ogg_path: str, token: str):
     url = f"https://api.telegram.org/bot{token}/sendVoice"
@@ -84,21 +87,19 @@ def gemini_transcribe_and_extract(audio_bytes: bytes):
         model="gemini-2.0-flash",
         contents=[
             prompt,
-            types.Part.from_bytes(
-                data=audio_bytes,
-                mime_type="audio/ogg"
-            )
+            types.Part.from_bytes(data=audio_bytes, mime_type="audio/ogg"),
         ],
         config=types.GenerateContentConfig(
             response_mime_type="application/json",
-            #temperature=0.1,
-        )
+            # temperature=0.1,
+        ),
     )
 
     data = json.loads(resp.text)
     if isinstance(data, list):  # falls Modell doch Liste liefert
         data = data[0]
     return data
+
 
 def address_exists(address_line: str, region="DE") -> bool:
     req = ValidateAddressRequest(
@@ -107,7 +108,9 @@ def address_exists(address_line: str, region="DE") -> bool:
             address_lines=[address_line],
         )
     )
-    resp = addr_client.validate_address(request=req)  # method on AddressValidationClient
+    resp = addr_client.validate_address(
+        request=req
+    )  # method on AddressValidationClient
     verdict = resp.result.verdict
 
     good_granularity = verdict.validation_granularity in ("PREMISE", "SUB_PREMISE")
@@ -117,7 +120,9 @@ def address_exists(address_line: str, region="DE") -> bool:
         and verdict.possible_next_action == "ACCEPT"
     )
 
+
 confirming = [False]
+
 
 @app.post("/telegram-webhook")
 async def telegram_webhook(req: Request):
@@ -128,7 +133,7 @@ async def telegram_webhook(req: Request):
     file_obj = msg.get("voice") or msg.get("audio") or msg.get("document")
     # if not file_obj:
     #     return {"ok": True}
-    
+
     text = msg.get("text")
     if text:
         text_lower = text.strip().lower()
@@ -143,18 +148,16 @@ async def telegram_webhook(req: Request):
             ogg_path = tts_to_mp3(greeting)
             send_voice(chat_id, ogg_path, TOKEN)
             return {"ok": True}
-    
-    
 
     file_id = file_obj["file_id"]
 
     print("Received file_id:", file_id)
 
     r = requests.get(
-            f"https://api.telegram.org/bot{TOKEN}/getFile",
-            params={"file_id": file_id},
-            timeout=10
-        )
+        f"https://api.telegram.org/bot{TOKEN}/getFile",
+        params={"file_id": file_id},
+        timeout=10,
+    )
     file_path = r.json()["result"]["file_path"]
 
     audio_url = f"https://api.telegram.org/file/bot{TOKEN}/{file_path}"
@@ -175,10 +178,11 @@ async def telegram_webhook(req: Request):
     chat_id = update["message"]["chat"]["id"]
 
     if confirming[0] == False:
-
         if data.get("notfall", True):
             print("EMERGENCY DETECTED!")
-            mp3 = tts_to_mp3("Achtung! Es wurde ein Notfall gemeldet. Bitte kontaktieren Sie umgehend 112!. Ich wiederhole, es wurde ein Notfall gemeldet. Bitte kontaktieren Sie umgehend 112!")
+            mp3 = tts_to_mp3(
+                "Achtung! Es wurde ein Notfall gemeldet. Bitte kontaktieren Sie umgehend 112!. Ich wiederhole, es wurde ein Notfall gemeldet. Bitte kontaktieren Sie umgehend 112!"
+            )
             ogg = mp3_to_ogg_opus(mp3)
             send_voice(chat_id, ogg, TOKEN)
             return {"ok": True}
@@ -186,52 +190,60 @@ async def telegram_webhook(req: Request):
         print("--------------")
         print(data.get("habe_alle_informationen"))
         print("Does the address exist?")
-        print(address_exists(data.get("address","")))
-        if not data.get("habe_alle_informationen") or not address_exists(data.get("address","")):
+        print(address_exists(data.get("address", "")))
+        if not data.get("habe_alle_informationen") or not address_exists(
+            data.get("address", "")
+        ):
             print("Not all information extracted.")
             missing = "Fehlende Informationen: "
-            if data.get("titel","Unklar") == "Unklar":
+            if data.get("titel", "Unklar") == "Unklar":
                 missing += "Titel, "
             if data.get("name") is None:
                 missing += "Name, "
             if data.get("help_type") is None:
                 missing += "Aktivität mit der Hilfe benötigt wird, "
-            if data.get("address") is None :
+            if data.get("address") is None:
                 missing += "Addresse, "
             if data.get("requested_time") is None:
                 missing += "An welchem Tag, "
             if data.get("duration") is None:
                 missing += "ungefähre Dauer, "
-            
 
-            mp3 = tts_to_mp3(f"Wiederhole bitte deine Anfrage. Ich habe nicht alle Informationen verstanden.{missing}. Dieses mal etwas deutlicher und langsamer! Danke!")
+            mp3 = tts_to_mp3(
+                f"Wiederhole bitte deine Anfrage. Ich habe nicht alle Informationen verstanden.{missing}. Dieses mal etwas deutlicher und langsamer! Danke!"
+            )
             ogg = mp3_to_ogg_opus(mp3)
             send_voice(chat_id, ogg, TOKEN)
             return {"ok": True}
 
         print("Storing help request in DB...")
 
-        anliegen = data.get("zusammenfassung","Keine Zusammenfassung erhalten.")
-        mp3 = tts_to_mp3(f"Alles klar! Ich habe deine Anfrage verstanden und werde mich darum kümmern. Ich wiederhole jetzt ihr anliegen:{anliegen} Stimmt das anliegen so?")
+        anliegen = data.get("zusammenfassung", "Keine Zusammenfassung erhalten.")
+        mp3 = tts_to_mp3(
+            f"Alles klar! Ich habe deine Anfrage verstanden und werde mich darum kümmern. Ich wiederhole jetzt ihr anliegen:{anliegen} Stimmt das anliegen so?"
+        )
         ogg = mp3_to_ogg_opus(mp3)
         send_voice(chat_id, ogg, TOKEN)
         confirming[0] = True
         return {"ok": True}
     else:
-        answer = data.get("titel","").strip().lower()
+        answer = data.get("titel", "").strip().lower()
         if answer == "ja":
-            sicherheitscode = random.randint(1000,9999)
-            mp3 = tts_to_mp3(f"Super! Ich werde mich sofort um deine Anfrage kümmern. Ihr Sicherheitscode lautet {sicherheitscode}. Ich wiederhole den Code jetzt noch einmal {sicherheitscode}. Noch ein letztes mal {sicherheitscode}. Vielen Dank für deinen Anruf und einen schönen Tag noch!")
+            sicherheitscode = random.randint(1000, 9999)
+            mp3 = tts_to_mp3(
+                f"Super! Ich werde mich sofort um deine Anfrage kümmern. Ihr Sicherheitscode lautet {sicherheitscode}. Ich wiederhole den Code jetzt noch einmal {sicherheitscode}. Noch ein letztes mal {sicherheitscode}. Vielen Dank für deinen Anruf und einen schönen Tag noch!"
+            )
             ogg = mp3_to_ogg_opus(mp3)
             send_voice(chat_id, ogg, TOKEN)
         else:
-            mp3 = tts_to_mp3("Oh, das tut mir leid. Bitte rufe erneut an und schildere dein Anliegen noch einmal. Danke!")
+            mp3 = tts_to_mp3(
+                "Oh, das tut mir leid. Bitte rufe erneut an und schildere dein Anliegen noch einmal. Danke!"
+            )
             ogg = mp3_to_ogg_opus(mp3)
             send_voice(chat_id, ogg, TOKEN)
-            
-        
-    # hier euer DB-create:
-    # db.create_help_request(...data...)
+
+        # hier euer DB-create:
+        # db.create_help_request(...data...)
         confirming[0] = False
         return {"ok": True}
 
