@@ -13,15 +13,15 @@ from google.maps.addressvalidation_v1 import AddressValidationClient
 from google.maps.addressvalidation_v1.types import ValidateAddressRequest
 from google.type.postal_address_pb2 import PostalAddress
 
-GOOGLE_ADDRESS_VALIDATION_API_KEY = " AIzaSyAXnQNC1e9MijlMy_68W6efQw14L6yebgc"
-
-addr_client = AddressValidationClient(
-    client_options={"api_key": GOOGLE_ADDRESS_VALIDATION_API_KEY}  # API key auth pattern for Google clients
-)
 
 app = FastAPI()
 load_dotenv()
 TOKEN = os.getenv("TELEGRAM")
+GOOGLE_ADDRESS_VALIDATION_API_KEY = os.getenv("GOVAL")
+
+addr_client = AddressValidationClient(
+    client_options={"api_key": GOOGLE_ADDRESS_VALIDATION_API_KEY}  # API key auth pattern for Google clients
+)
 
 if not TOKEN:
     raise RuntimeError("Missing env vars! Check your .env file.")
