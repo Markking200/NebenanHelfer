@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from backend.database import database
+from backend.routers.gemini_tg import router as gemini_router
 from backend.routers.requests import router as requests_router
 from backend.routers.user import router as user_router
 
@@ -21,3 +22,4 @@ app = FastAPI(lifespan=lifespan)
 # Include routers for different API endpoints
 app.include_router(requests_router, prefix="/api")
 app.include_router(user_router, prefix="/api")
+app.include_router(gemini_router, prefix="/api")
