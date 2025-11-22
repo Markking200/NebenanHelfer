@@ -1,10 +1,16 @@
 import logging
 
-from fastapi import APIRouter, status
+from fastapi import APIRouter, HTTPException, status
 
 from backend.database import database, requests_table
 from backend.models import requests
-from backend.models.requests import HelpRequestCreate, HelpRequestResponse
+from backend.models.requests import (
+    HelpRequestCreate,
+    HelpRequestResponse,
+    HelpRequestUpdate,
+)
+from backend.models.user import UserType
+from backend.routers.user import get_user
 
 router = APIRouter()
 
@@ -26,6 +32,15 @@ async def find_request(request_id: int):
 async def create_request(request: HelpRequestCreate):
     """Create a new request associated with a senior user"""
     data = {**request.model_dump()}
+
+    # Only senior users can create requests
+    user = await get_user(data["user_id"])
+    if user.user_type != UserType.SENIOR:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only senior users can create requests",
+        )
+
     query = requests_table.insert().values(data)
 
     logger.debug(f"Executing query to create request: {query} with data: {data}")
@@ -55,3 +70,24 @@ async def get_requests(status: requests.RequestStatus = requests.RequestStatus.O
     logger.debug(f"Executing query to get requests: {query}")
     results = await database.fetch_all(query)
     return results
+
+
+# update request when a student select to help
+@router.put("/request/{request_id}", response_model=HelpRequestResponse)
+async def update_request(request_id: int, request: HelpRequestUpdate):
+    """Update a help request's status and assigned student"""
+    existing_request = await find_request(request_id)
+    if not existing_request:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Request not found"
+        )
+    update_data = request.model_dump(exclude_unset=True)
+    query = (
+        requests_table.update()
+        .where(requests_table.c.id == request_id)
+        .values(**update_data)
+    )
+    logger.debug(f"Executing query to update request: {query} with data: {update_data}")
+    await database.execute(query)
+    updated_request = await find_request(request_id)
+    return updated_request
