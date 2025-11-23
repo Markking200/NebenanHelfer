@@ -49,3 +49,9 @@ class HelpRequestResponse(HelpRequestBase):
     status: Optional[RequestStatus] = None
     student_id: Optional[int] = None
     model_config = ConfigDict(from_attributes=True)  # For ORM compatibility
+
+
+# Output with user details
+class HelpRequestResponseWithUser(HelpRequestResponse):
+    user_full_name: str
+    user_contact_number: str

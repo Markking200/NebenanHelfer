@@ -1,12 +1,14 @@
 import logging
 
+import sqlalchemy
 from fastapi import APIRouter, HTTPException, status
 
-from backend.database import database, requests_table
+from backend.database import database, requests_table, user_table
 from backend.models import requests
 from backend.models.requests import (
     HelpRequestCreate,
     HelpRequestResponse,
+    HelpRequestResponseWithUser,
     HelpRequestUpdate,
 )
 from backend.models.user import UserType
@@ -58,11 +60,18 @@ async def create_request(request: HelpRequestCreate):
 
 # Using Enum for request status filtering
 # Get list of requests, with optional filtering by status
-@router.get("/requests", response_model=list[HelpRequestResponse])
+# Returns also user name and contact number
+@router.get("/requests", response_model=list[HelpRequestResponseWithUser])
 async def get_requests(status: requests.RequestStatus | None = None):
     """Retrieve all requests, optionally filtered by status"""
 
-    query = requests_table.select()
+    query = sqlalchemy.select(
+        requests_table,
+        user_table.c.full_name.label("user_full_name"),
+        user_table.c.phone.label("user_contact_number"),
+    ).select_from(
+        requests_table.join(user_table, requests_table.c.user_id == user_table.c.id)
+    )
 
     if status:
         query = query.where(requests_table.c.status == status.value)
