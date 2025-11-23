@@ -276,17 +276,26 @@ async def telegram_webhook(req: Request):
             # ← CREATE USER AND REQUEST IN DATABASE
             print("✅ User confirmed! Creating user and request in database...")
 
-            user_data = {
-                "full_name": stored_data[0].get("name", "Telegram User"),
-                "phone": f"telegram_{chat_id}",
-                "email": f"telegram_{chat_id}@nebenanhelfer.de",
-                "password": f"telegram_{chat_id}",
-                "user_type": "senior",
-                "address": stored_data[0].get("address", ""),
-            }
-            query = user_table.insert().values(**user_data)
-            user_id = await database.execute(query)
-            print(f"✅ Created user ID: {user_id}")
+            # Check if user already exists by email
+            email = f"telegram_{chat_id}@nebenanhelfer.de"
+            query = user_table.select().where(user_table.c.email == email)
+            existing_user = await database.fetch_one(query)
+
+            if existing_user:
+                user_id = existing_user["id"]
+                print(f"✅ User already exists with ID: {user_id}")
+            else:
+                user_data = {
+                    "full_name": stored_data[0].get("name", "Telegram User"),
+                    "phone": f"telegram_{chat_id}",
+                    "email": email,
+                    "password": f"telegram_{chat_id}",
+                    "user_type": "senior",
+                    "address": stored_data[0].get("address", ""),
+                }
+                query = user_table.insert().values(**user_data)
+                user_id = await database.execute(query)
+                print(f"✅ Created new user ID: {user_id}")
 
             request_data = {
                 "title": stored_data[0].get("titel", "Hilfe benötigt"),
