@@ -6,12 +6,20 @@ from fastapi.middleware.cors import CORSMiddleware
 from backend.database import database
 from backend.routers.requests import router as requests_router
 from backend.routers.user import router as user_router
+from backend.utils.predefined_users import (
+    seed_predefined_requests,
+    seed_predefined_users,
+)
 
 
 # Turn on and shut down database connection with the app
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await database.connect()
+    # Seed predefined users
+    await seed_predefined_users()
+    # Seed predefined requests
+    await seed_predefined_requests()
     yield
     await database.disconnect()
 
