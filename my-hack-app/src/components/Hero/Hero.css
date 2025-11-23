@@ -1,0 +1,343 @@
+:root { 
+  --primary-color: #4facfe; 
+  --secondary-color: #00f2fe; 
+  --accent-warm: #f6d365;
+  --accent-purple: #9d50bb;
+  --accent-green: #57c84d;
+  --accent-orange: #ff7e5f;
+  --accent-pink: #ff6b9d;
+  --text-primary: #1a2b3c; 
+  --text-secondary: #4a5b6c; 
+  --glass-border: rgba(255, 255, 255, 0.5); 
+  --glass-bg: rgba(255, 255, 255, 0.4); 
+}
+
+.ai-node.cluster-0 { background: var(--primary-color); }
+.ai-node.cluster-1 { background: var(--secondary-color); }
+.ai-node.cluster-2 { background: var(--accent-warm); }
+.ai-node.cluster-3 { background: var(--accent-purple); }
+.ai-node.cluster-4 { background: var(--accent-green); }
+.ai-node.cluster-5 { background: var(--accent-orange); }
+
+
+.ai-node.cluster-0.active { box-shadow: 0 0 20px rgba(79, 172, 254, 0.8), 0 0 40px rgba(79, 172, 254, 0.4); }
+.ai-node.cluster-1.active { box-shadow: 0 0 20px rgba(0, 242, 254, 0.8), 0 0 40px rgba(0, 242, 254, 0.4); }
+.ai-node.cluster-2.active { box-shadow: 0 0 20px rgba(246, 211, 101, 0.8), 0 0 40px rgba(246, 211, 101, 0.4); }
+.ai-node.cluster-3.active { box-shadow: 0 0 20px rgba(157, 80, 187, 0.8), 0 0 40px rgba(157, 80, 187, 0.4); }
+.ai-node.cluster-4.active { box-shadow: 0 0 20px rgba(87, 200, 77, 0.8), 0 0 40px rgba(87, 200, 77, 0.4); }
+.ai-node.cluster-5.active { box-shadow: 0 0 20px rgba(255, 126, 95, 0.8), 0 0 40px rgba(255, 126, 95, 0.4); }
+
+
+
+.ai-node.hex-node {
+  border-radius: 15%;
+  transform: translate(-50%, -50%) rotate(0deg);
+}
+
+.ai-node.radial-node {
+  border-radius: 30% 70% 70% 30% / 30% 30% 70% 70%;
+  animation: radial-pulse 4s ease-in-out infinite;
+}
+
+
+@keyframes radial-pulse {
+  0%, 100% { transform: translate(-50%, -50%) scale(1) rotate(0deg); }
+  50% { transform: translate(-50%, -50%) scale(1.1) rotate(180deg); }
+}
+
+
+.hero { 
+  position: relative; 
+  min-height: 100vh; 
+  display: flex; 
+  align-items: center; 
+  padding: 6rem 0; 
+  overflow: hidden; 
+  background: linear-gradient(135deg, #f8faff 0%, #f0f7ff 100%);
+}
+
+/* ---------------------------------------
+   🔵 Enhanced Neural Mesh Background
+---------------------------------------- */
+.neural-mesh {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+  transition: opacity 0.8s ease-in-out;
+}
+
+.neural-mesh line {
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 6px rgba(79,172,254,0.3));
+  transition: all 0.3s ease;
+}
+
+/* ---------------------------------------
+   🔵 Enhanced Node Particles
+---------------------------------------- */
+.ai-nodes {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.ai-node {
+  position: absolute;
+  width: 7px;
+  height: 7px;
+  background: var(--primary-color);
+  border-radius: 50%;
+  opacity: 0.35;
+  transition: all 0.3s ease;
+  box-shadow: 0 0 6px rgba(79,172,254,0.4);
+  transform: translate(-50%, -50%);
+}
+
+.ai-node.hex-node {
+  border-radius: 15% 15% 15% 15% / 15% 15% 15% 15%;
+  transform: translate(-50%, -50%) rotate(0deg);
+  transition: all 0.4s ease;
+}
+
+.ai-node.active {
+  transform: translate(-50%, -50%) scale(2.2);
+  opacity: 1;
+  box-shadow: 
+    0 0 20px rgba(0,242,254,0.8),
+    0 0 40px rgba(0,242,254,0.4);
+  z-index: 2;
+}
+
+.ai-node.hex-node.active {
+  transform: translate(-50%, -50%) scale(2) rotate(45deg);
+  border-radius: 25%;
+}
+
+/* ---------------------------------------
+   🔵 Enhanced Interactive Glow Trail
+---------------------------------------- */
+.trail-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.trail-dot {
+  position: absolute;
+  background: radial-gradient(circle, 
+    rgba(79,172,254,0.9) 0%, 
+    rgba(0,242,254,0.7) 30%,
+    rgba(157,80,187,0.5) 70%,
+    transparent 100%);
+  border-radius: 50%;
+  filter: blur(12px);
+  opacity: 0;
+  transform: translate(-50%, -50%);
+  animation: trailFade 1.2s ease-out forwards;
+  mix-blend-mode: screen;
+}
+
+@keyframes trailFade {
+  0% { 
+    opacity: 0.9;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  50% { 
+    opacity: 0.6;
+    transform: translate(-50%, -50%) scale(1.1);
+  }
+  100% { 
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.8);
+  }
+}
+
+/* ---------------------------------------
+   🔵 Network Mode Indicator
+---------------------------------------- */
+.network-indicator {
+  position: absolute;
+  top: 2rem;
+  right: 2rem;
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  z-index: 10;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border);
+  transition: all 0.3s ease;
+}
+
+.network-mode {
+  color: var(--primary-color);
+  font-weight: 600;
+}
+
+/* ---------------------------------------
+   🔵 Existing Styles (Optimized)
+---------------------------------------- */
+.hero-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 2rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  z-index: 2;
+}
+
+.hero-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  max-width: 850px;
+  text-align: center;
+  align-items: center;
+}
+
+.glass-effect {
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+}
+
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1.2rem;
+  border-radius: 50px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #0f4c75;
+  margin-bottom: 1rem;
+}
+
+
+
+.hero-title {
+  font-size: 4rem;
+  font-weight: 800;
+  line-height: 1.1;
+  color: var(--text-primary);
+  letter-spacing: -0.03em;
+  margin: 0;
+  text-shadow: 0 20px 40px rgba(0,0,0,0.05);
+}
+
+.hero-title .highlight {
+  background: linear-gradient(135deg, #2b5876 0%, #4e4376 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.hero-description {
+  font-size: 1.25rem;
+  line-height: 1.7;
+  color: var(--text-secondary);
+  max-width: 650px;
+}
+
+.highlight-text {
+  color: var(--primary-color);
+  font-weight: 600;
+}
+
+.hero-actions {
+  display: flex;
+  gap: 1.5rem;
+  margin-top: 1rem;
+}
+
+.btn-primary {
+  padding: 1rem 2.5rem;
+  border-radius: 50px;
+  font-weight: 600;
+  font-size: 1.1rem;
+  border: none;
+  background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+  color: white;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 10px 30px rgba(79, 172, 254, 0.4);
+}
+
+.btn-primary:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 15px 35px rgba(79, 172, 254, 0.5);
+}
+
+.btn-secondary {
+  padding: 1rem 2.5rem;
+  border-radius: 50px;
+  font-weight: 600;
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--text-primary);
+}
+
+.btn-secondary:hover {
+  background: white;
+  transform: translateY(-3px);
+}
+
+/* --- Responsive --- */
+@media (max-width: 768px) {
+  .hero-title {
+    font-size: 2.5rem;
+  }
+  
+  .hero-actions {
+    flex-direction: column;
+    width: 100%;
+  }
+  
+  .btn-primary, .btn-secondary {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  .network-indicator {
+    top: 1rem;
+    right: 1rem;
+    font-size: 0.7rem;
+    padding: 0.4rem 0.8rem;
+  }
+  
+  /* Reduce nodes on mobile for performance */
+  .ai-node {
+    width: 5px;
+    height: 5px;
+  }
+  
+  .trail-dot {
+    filter: blur(8px);
+  }
+}
+
+/* Performance optimization for slower devices */
+@media (max-width: 480px) {
+  .neural-mesh line {
+    stroke-width: 0.5;
+  }
+  
+  .ai-node {
+    opacity: 0.25;
+  }
+}

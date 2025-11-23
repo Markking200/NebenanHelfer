@@ -1,0 +1,138 @@
+.how-it-works {
+  padding: 6rem 0;
+  background: white;
+}
+
+.how-it-works-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 2rem;
+}
+
+.how-it-works-header {
+  text-align: center;
+  margin-bottom: 4rem;
+}
+
+.steps-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 2rem;
+  position: relative;
+}
+
+.step-item {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.step-number {
+  font-size: 4rem;
+  font-weight: 800;
+  color: var(--primary-color);
+  opacity: 0.1;
+  position: absolute;
+  top: -20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 0;
+}
+
+.step-content {
+  position: relative;
+  z-index: 1;
+  background: white;
+  padding: 2rem;
+  border-radius: 20px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+  border: 1px solid var(--border-color);
+  transition: all 0.3s ease;
+  width: 100%;
+}
+
+.step-item:hover .step-content {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
+  border-color: var(--primary-color);
+}
+
+.step-icon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+  display: block;
+}
+
+.step-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 1rem;
+}
+
+.step-description {
+  font-size: 1rem;
+  color: var(--text-secondary);
+  line-height: 1.7;
+}
+
+.step-connector {
+  position: absolute;
+  top: 50%;
+  right: -1rem;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  z-index: 2;
+}
+
+.connector-line {
+  width: 60px;
+  height: 2px;
+  background: var(--border-color);
+}
+
+.connector-arrow {
+  color: var(--primary-color);
+  font-size: 1.5rem;
+  margin-left: -5px;
+}
+
+@media (max-width: 968px) {
+  .step-connector {
+    display: none;
+  }
+
+  .steps-container {
+    grid-template-columns: 1fr;
+  }
+
+  .step-item {
+    margin-bottom: 2rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .how-it-works {
+    padding: 4rem 0;
+  }
+
+  .step-number {
+    font-size: 3rem;
+  }
+
+  .step-content {
+    padding: 1.5rem;
+  }
+
+  .step-icon {
+    font-size: 2.5rem;
+  }
+
+  .step-title {
+    font-size: 1.25rem;
+  }
+}
+
