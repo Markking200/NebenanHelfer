@@ -14,8 +14,9 @@ from google.maps.addressvalidation_v1.types import ValidateAddressRequest
 from google.type.postal_address_pb2 import PostalAddress
 from gtts import gTTS
 
-# Import backend components for database access
+# Import backend components
 from backend.database import database, requests_table, user_table
+from backend.models.user import UserType
 
 load_dotenv()
 
@@ -35,7 +36,9 @@ TOKEN = os.getenv("TELEGRAM")
 GOOGLE_ADDRESS_VALIDATION_API_KEY = os.getenv("GOVAL")
 
 addr_client = AddressValidationClient(
-    client_options={"api_key": GOOGLE_ADDRESS_VALIDATION_API_KEY}
+    client_options={
+        "api_key": GOOGLE_ADDRESS_VALIDATION_API_KEY
+    }  # API key auth pattern for Google clients
 )
 
 if not TOKEN:
@@ -56,7 +59,10 @@ def tts_to_mp3(text, mp3_path="reply.mp3"):
 
 
 def mp3_to_ogg_opus(mp3_path="reply.mp3", ogg_path="reply.ogg"):
-    """Convert MP3 to OGG Opus. Falls back to MP3 if ffmpeg not installed."""
+    """Convert MP3 to OGG Opus format using ffmpeg.
+
+    If ffmpeg is not installed, returns the MP3 path as fallback.
+    """
     try:
         subprocess.run(
             [
@@ -71,12 +77,17 @@ def mp3_to_ogg_opus(mp3_path="reply.mp3", ogg_path="reply.ogg"):
                 ogg_path,
             ],
             check=True,
-            capture_output=True,
+            capture_output=True,  # Suppress ffmpeg output
         )
         return ogg_path
     except FileNotFoundError:
-        print("WARNING: ffmpeg not found, using MP3")
-        return mp3_path
+        print(
+            "WARNING: ffmpeg not found. Using MP3 instead of OGG. Install ffmpeg for better Telegram compatibility."
+        )
+        return mp3_path  # Fallback to MP3
+    except subprocess.CalledProcessError as e:
+        print(f"ffmpeg conversion failed: {e}")
+        return mp3_path  # Fallback to MP3
 
 
 def send_voice(chat_id: int, ogg_path: str, token: str):
@@ -121,14 +132,15 @@ def gemini_transcribe_and_extract(audio_bytes: bytes):
         ],
         config=types.GenerateContentConfig(
             response_mime_type="application/json",
+            # temperature=0.1,
         ),
     )
 
     data = json.loads(resp.text)
-    if isinstance(data, list):
+    if isinstance(data, list):  # falls Modell doch Liste liefert
         data = data[0]
 
-    # Normalize boolean fields (Gemini sometimes returns strings)
+    # Normalize boolean fields (Gemini sometimes returns strings "true"/"false")
     for bool_field in ["habe_alle_informationen", "notfall"]:
         if isinstance(data.get(bool_field), str):
             data[bool_field] = data[bool_field].lower() == "true"
@@ -137,15 +149,26 @@ def gemini_transcribe_and_extract(audio_bytes: bytes):
 
 
 def address_exists(address_line: str, region="DE") -> bool:
-    """Validate address. Returns False if None/empty or invalid."""
-    if not address_line:
+    """Validate address using Google Address Validation API.
+
+    Returns False if address is None, empty, or invalid.
+    """
+    # Handle None or empty address
+    if not address_line or address_line == "":
         return False
+
     try:
         req = ValidateAddressRequest(
-            address=PostalAddress(region_code=region, address_lines=[address_line])
+            address=PostalAddress(
+                region_code=region,
+                address_lines=[address_line],
+            )
         )
-        resp = addr_client.validate_address(request=req)
+        resp = addr_client.validate_address(
+            request=req
+        )  # method on AddressValidationClient
         verdict = resp.result.verdict
+
         good_granularity = verdict.validation_granularity in ("PREMISE", "SUB_PREMISE")
         return (
             verdict.address_complete
@@ -157,7 +180,6 @@ def address_exists(address_line: str, region="DE") -> bool:
         return False
 
 
-# Simple global state (original logic)
 confirming = [False]
 stored_data = [{}]
 
@@ -169,6 +191,8 @@ async def telegram_webhook(req: Request):
     chat = msg.get("chat") or {}
     chat_id = chat.get("id")
     file_obj = msg.get("voice") or msg.get("audio") or msg.get("document")
+    # if not file_obj:
+    #     return {"ok": True}
 
     text = msg.get("text")
     if text:
@@ -185,10 +209,8 @@ async def telegram_webhook(req: Request):
             send_voice(chat_id, ogg_path, TOKEN)
             return {"ok": True}
 
-    if not file_obj:
-        return {"ok": True}
-
     file_id = file_obj["file_id"]
+
     print("Received file_id:", file_id)
 
     r = requests.get(
@@ -215,7 +237,9 @@ async def telegram_webhook(req: Request):
 
     chat_id = update["message"]["chat"]["id"]
 
-    if confirming[0] == False:
+    # Check if we're in confirmation mode for this chat
+    if chat_id not in pending_requests:
+        # First message - extract and validate
         if data.get("notfall", False):
             print("EMERGENCY DETECTED!")
             mp3 = tts_to_mp3(
@@ -226,18 +250,37 @@ async def telegram_webhook(req: Request):
             return {"ok": True}
 
         print("--------------")
-        print(data.get("habe_alle_informationen"))
-        print("Does the address exist?")
-        if data.get("address"):
-            print(address_exists(data.get("address", "")))
+        print(f"habe_alle_informationen: {data.get('habe_alle_informationen')}")
+        print(f"Address: {data.get('address')}")
 
-        if not data.get("habe_alle_informationen"):
-            print("Not all information extracted.")
+        # Validate address only if one was provided
+        address_valid = True
+        if data.get("address"):
+            address_valid = address_exists(data.get("address"))
+            print(f"Address validation result: {address_valid}")
+        else:
+            print("No address provided, skipping validation")
+
+        # Check if we have minimum required information
+        has_required_fields = (
+            data.get("titel")
+            and data.get("titel") != "Unklar"
+            and data.get("name")
+            and data.get("phone")
+            and data.get("address")
+        )
+
+        print(f"Has required fields: {has_required_fields}")
+
+        if not has_required_fields:  # or (data.get("address") and not address_valid):
+            print("Not all information extracted or address invalid.")
             missing = "Fehlende Informationen: "
             if data.get("titel", "Unklar") == "Unklar":
                 missing += "Titel, "
             if data.get("name") is None:
                 missing += "Name, "
+            if data.get("phone") is None:
+                missing += "Telefonnummer, "
             if data.get("help_type") is None:
                 missing += "Aktivität mit der Hilfe benötigt wird, "
             if data.get("address") is None:
@@ -254,8 +297,9 @@ async def telegram_webhook(req: Request):
             send_voice(chat_id, ogg, TOKEN)
             return {"ok": True}
 
-        print("Storing help request in memory...")
-        stored_data[0] = data  # ← STORE DATA FOR CONFIRMATION
+        # All information gathered - store for confirmation
+        pending_requests[chat_id] = data
+        print(f"Stored pending request for chat_id {chat_id}")
 
         anliegen = data.get("zusammenfassung", "Keine Zusammenfassung erhalten.")
         mp3 = tts_to_mp3(
@@ -263,37 +307,22 @@ async def telegram_webhook(req: Request):
         )
         ogg = mp3_to_ogg_opus(mp3)
         send_voice(chat_id, ogg, TOKEN)
-        confirming[0] = True
         return {"ok": True}
     else:
+        # Confirmation response
         answer = data.get("titel", "").strip().lower()
+        stored_data = pending_requests[chat_id]
+
         if answer == "ja":
-            # ← CREATE USER AND REQUEST IN DATABASE
-            print("Creating user and request in database...")
+            # Create user and request in database
+            user_id = await get_or_create_senior_user(
+                name=stored_data.get("name", "Unbekannt"),
+                phone=stored_data.get("phone", f"+49_telegram_{chat_id}"),
+                address=stored_data.get("address", ""),
+                chat_id=chat_id,
+            )
 
-            user_data = {
-                "full_name": stored_data[0].get("name", "Telegram User"),
-                "phone": f"telegram_{chat_id}",
-                "email": f"telegram_{chat_id}@nebenanhelfer.de",
-                "password": f"telegram_{chat_id}",
-                "user_type": "senior",
-                "address": stored_data[0].get("address", ""),
-            }
-            query = user_table.insert().values(**user_data)
-            user_id = await database.execute(query)
-            print(f"✅ Created user ID: {user_id}")
-
-            request_data = {
-                "title": stored_data[0].get("titel", "Hilfe benötigt"),
-                "details": stored_data[0].get("zusammenfassung", "Keine Details"),
-                "address": stored_data[0].get("address", ""),
-                "current_contact_number": f"telegram_{chat_id}",
-                "user_id": user_id,
-                "status": "open",
-            }
-            query = requests_table.insert().values(**request_data)
-            request_id = await database.execute(query)
-            print(f"✅ Created request ID: {request_id}")
+            request_id = await create_help_request_from_data(stored_data, user_id)
 
             sicherheitscode = random.randint(1000, 9999)
             mp3 = tts_to_mp3(
@@ -301,6 +330,7 @@ async def telegram_webhook(req: Request):
             )
             ogg = mp3_to_ogg_opus(mp3)
             send_voice(chat_id, ogg, TOKEN)
+            print(f"Successfully created request ID {request_id} for user ID {user_id}")
         else:
             mp3 = tts_to_mp3(
                 "Oh, das tut mir leid. Bitte rufe erneut an und schildere dein Anliegen noch einmal. Danke!"
@@ -308,7 +338,31 @@ async def telegram_webhook(req: Request):
             ogg = mp3_to_ogg_opus(mp3)
             send_voice(chat_id, ogg, TOKEN)
 
-        # ← CLEAR STATE
-        confirming[0] = False
-        stored_data[0] = {}
+        # Clear pending request
+        del pending_requests[chat_id]
         return {"ok": True}
+
+
+# @app.post("/telegram-webhook")
+# async def telegram_webhook(req: Request):
+#     update = await req.json()
+#     msg = update.get("message") or {}
+#     chat = msg.get("chat") or {}
+#     chat_id = chat.get("id")
+
+#     # ---- A) START / TEXT HANDLING ----
+#     text = msg.get("text")
+#     if text:
+#         text_lower = text.strip().lower()
+#         if text_lower == "/start" or text_lower == "start":
+#             greeting = (
+#                 "Hallo! Schön, dass Sie anrufen. "
+#                 "Sprechen Sie einfach ein, "
+#                 "wobei Sie Hilfe brauchen. Ich kümmere mich dann darum. Bitte beachten Sie nur ein Anliegen pro Anruf anzusprechen."
+#                 "Erwähnen Sie Ihren namen, womit Sie hilfe brauchen, ihre addresse, wann und wie lange es dauern wird!"
+#             )
+#             ogg_path = tts_to_mp3(greeting)
+#             send_voice(chat_id, ogg_path, TOKEN)
+#             return {"ok": True}
+
+#     return {"ok": True}
