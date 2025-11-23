@@ -215,6 +215,8 @@ async def telegram_webhook(req: Request):
 
     chat_id = update["message"]["chat"]["id"]
 
+    print(f"🔍 Current state: confirming={confirming[0]}, has_stored_data={bool(stored_data[0])}")
+
     if confirming[0] == False:
         if data.get("notfall", False):
             print("EMERGENCY DETECTED!")
@@ -258,18 +260,21 @@ async def telegram_webhook(req: Request):
         stored_data[0] = data  # ← STORE DATA FOR CONFIRMATION
 
         anliegen = data.get("zusammenfassung", "Keine Zusammenfassung erhalten.")
-        mp3 = tts_to_mp3(
-            f"Alles klar! Ich habe deine Anfrage verstanden und werde mich darum kümmern. Ich wiederhole jetzt ihr anliegen:{anliegen} Stimmt das anliegen so?"
-        )
+        confirmation_text = f"Alles klar! Ich habe deine Anfrage verstanden und werde mich darum kümmern. Ich wiederhole jetzt ihr anliegen:{anliegen} Stimmt das anliegen so?"
+        print(f"Sending confirmation message: {confirmation_text[:100]}...")
+        mp3 = tts_to_mp3(confirmation_text)
         ogg = mp3_to_ogg_opus(mp3)
         send_voice(chat_id, ogg, TOKEN)
         confirming[0] = True
+        print(f"✅ Confirmation sent. Waiting for 'ja' response. confirming={confirming[0]}")
         return {"ok": True}
     else:
+        print("📝 Processing confirmation response...")
         answer = data.get("titel", "").strip().lower()
+        print(f"User answered: '{answer}'")
         if answer == "ja":
             # ← CREATE USER AND REQUEST IN DATABASE
-            print("Creating user and request in database...")
+            print("✅ User confirmed! Creating user and request in database...")
 
             user_data = {
                 "full_name": stored_data[0].get("name", "Telegram User"),
@@ -288,6 +293,7 @@ async def telegram_webhook(req: Request):
                 "details": stored_data[0].get("zusammenfassung", "Keine Details"),
                 "address": stored_data[0].get("address", ""),
                 "current_contact_number": f"telegram_{chat_id}",
+                "target_date": stored_data[0].get("requested_time"),
                 "user_id": user_id,
                 "status": "open",
             }

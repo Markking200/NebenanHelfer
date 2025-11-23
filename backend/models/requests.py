@@ -25,6 +25,7 @@ class HelpRequestBase(BaseModel):
     details: str = Field(..., description="Full transcription from the AI")
     address: str = Field(..., description="Location of the senior")
     current_contact_number: str = Field(..., description="Phone number of the senior")
+    target_date: Optional[str] = Field(None, description="When the senior needs help")
 
 
 # Input Schema
