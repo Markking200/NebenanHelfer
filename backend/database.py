@@ -23,7 +23,6 @@ requests_table = sqlalchemy.Table(
     ),
     sqlalchemy.Column("status", sqlalchemy.String, server_default="open"),
     sqlalchemy.Column("current_contact_number", sqlalchemy.String),
-    sqlalchemy.Column("target_date", sqlalchemy.String, nullable=True),
 )
 
 # User table
