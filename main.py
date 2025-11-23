@@ -1,6 +1,5 @@
 import json
 import os
-import random
 import subprocess
 
 import requests
@@ -166,7 +165,7 @@ async def telegram_webhook(req: Request):
     print("Downloaded audio, size:", len(audio_bytes))
 
     data = gemini_transcribe_and_extract(audio_bytes)
-    print("Gemini response data type:", type(data))
+    """ print("Gemini response data type:", type(data))
     print("Gemini response data:", data)
 
     if isinstance(data, list):
@@ -244,8 +243,8 @@ async def telegram_webhook(req: Request):
 
         # hier euer DB-create:
         # db.create_help_request(...data...)
-        confirming[0] = False
-        return {"ok": True}
+        confirming[0] = False """
+    return {"ok": True, "data": data}
 
 
 # @app.post("/telegram-webhook")
