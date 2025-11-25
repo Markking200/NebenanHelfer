@@ -39,7 +39,7 @@ For students a way to engage with Munich community while earning some rewards.
 ┌─────────────────────────────────────────────────────────────┐
 │                     ZeitZuHelfen System                     │
 ├──────────────────────────────┬──────────────────────────────┤
-│   Backend API (Port 8000)    │  Telegram Bot (Port 5000)    │
+│   Backend API                │  Telegram Bot                │
 │   - User Management          │  - Voice Message Processing  │
 │   - Request CRUD             │  - AI Transcription          │
 │   - Student Interface        │  - Address Validation        │
